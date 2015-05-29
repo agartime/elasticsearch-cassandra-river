@@ -30,7 +30,7 @@ public class CassandraFactory {
         LoadBalancingPolicy loadBalancingPolicy = new DCAwareRoundRobinPolicy(dcName,2);
         PoolingOptions poolingOptions = new PoolingOptions();
 
-        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL,10);
+        poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL,8);
         poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL, 50);
 
         SocketOptions socketOptions = new SocketOptions().setReadTimeoutMillis(readTimeoutMillis)
