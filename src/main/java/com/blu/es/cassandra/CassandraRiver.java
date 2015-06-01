@@ -5,14 +5,9 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import com.datastax.driver.core.*;
 
 import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
-import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequestBuilder;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.*;
-import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.util.concurrent.ThreadFactoryBuilder;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -187,16 +182,7 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                             .endObject()
                                         .endObject();
                                 LOGGER.debug(mappingBuilder.string());
-                                //IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists();
-                                if (checkIfIndexExists(indexName)) {
-                                    PutMappingRequestBuilder putMappingRequestBuilder = client.admin().indices().preparePutMapping(indexName);
-                                    putMappingRequestBuilder.setType(indexType).setSource(mappingBuilder);
-                                    putMappingRequestBuilder.execute().actionGet();
-                                } else {
-                                    CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName);
-                                    createIndexRequestBuilder.addMapping(indexType, mappingBuilder);
-                                    createIndexRequestBuilder.execute().actionGet();
-                                }
+
                             } catch (IOException e) {
                                 LOGGER.warn("XContentBuilder IO exception {}", e);
                             }
@@ -366,20 +352,6 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
         }
 
     }
-
-    public boolean checkIfIndexExists(String index) {
-
-        IndexMetaData indexMetaData = client.admin().cluster()
-                .state(Requests.clusterStateRequest())
-                .actionGet()
-                .getState()
-                .getMetaData()
-                .index(index);
-
-        return (indexMetaData != null);
-
-    }
-
 
     public static Client getClient() {
         return client;
