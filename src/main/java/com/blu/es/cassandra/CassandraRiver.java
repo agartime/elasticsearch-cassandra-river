@@ -161,10 +161,13 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                                 .startObject("properties")
                                                     .startObject(columnName)
                                                         .field("type", column.get("type"));
+
                                 if(column.containsKey("format")) {
+                                    LOGGER.info("Reading format for column "+columnName);
                                     mappingBuilder.field("format", column.get("format"));
                                 }
                                 if(column.containsKey("raw") && column.containsKey("raw")) {
+                                    LOGGER.info("Reading raw for column "+columnName);
                                     mappingBuilder
                                                         .field("index", "analyzed")
                                                         .field("copy_to", String.format("%s.raw", columnName))
@@ -176,6 +179,7 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                                         .endObject();
                                 }
                                 if(column.containsKey("list_name")) {
+                                    LOGGER.info("Reading list_name for column "+columnName);
                                     mappingBuilder.field("index_name", column.get("list_name"));
                                 }
                                 mappingBuilder
@@ -221,6 +225,8 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                 IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                 if (res.isExists()) {
                     LOGGER.info("Putting mapping for indexName: "+indexName+", indexType: "+indexType);
+                    LOGGER.info("MAPPING BUILDER: "+mappingBuilder.toString());
+                    LOGGER.info(mappingBuilder.toString());
                     PutMappingRequestBuilder putMappingRequestBuilder = client.admin().indices().preparePutMapping(indexName);
                     putMappingRequestBuilder.setType(indexType).setSource(mappingBuilder);
                     putMappingRequestBuilder.execute().actionGet();
