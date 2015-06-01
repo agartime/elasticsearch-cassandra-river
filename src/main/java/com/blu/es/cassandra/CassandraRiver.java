@@ -150,7 +150,6 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                         // Create Index and set settings and mappings
                         @SuppressWarnings("unchecked")
                         List<Map<String, String>> columns = (List<Map<String, String>>) columnFamily.get("columns");
-                        IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                         //IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                         // MAPPING GOES HERE
                         for (Map<String, String> column : columns) {
@@ -186,7 +185,8 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                             .endObject()
                                         .endObject();
                                 LOGGER.debug(mappingBuilder.string());
-                                if (res.isExists()) {
+                                //IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet().isExists();
+                                if (client.admin().indices().prepareExists(indexName).execute().actionGet().isExists()) {
                                     PutMappingRequestBuilder putMappingRequestBuilder = client.admin().indices().preparePutMapping(indexName);
                                     putMappingRequestBuilder.setType(indexType).setSource(mappingBuilder);
                                     putMappingRequestBuilder.execute().actionGet();
@@ -194,7 +194,6 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                     CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName);
                                     createIndexRequestBuilder.addMapping(indexType, mappingBuilder);
                                     createIndexRequestBuilder.execute().actionGet();
-                                    res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                                 }
                             } catch (IOException e) {
                                 LOGGER.warn("XContentBuilder IO exception {}", e);
