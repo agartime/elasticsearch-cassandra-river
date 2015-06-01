@@ -5,6 +5,9 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import com.datastax.driver.core.*;
 
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
+import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingRequestBuilder;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.*;
@@ -138,8 +141,8 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                     jobData.put(JOB_DATA_KEY_PRIMARY_KEY, primaryKey);
                     @SuppressWarnings("unchecked")
                     Map<String,String> index = (Map<String, String>) columnFamily.get("index");
-                    String indexName = XContentMapValues.nodeStringValue(index.get("name"), "DEFAULT_INDEX_NAME");
-                    String indexType = XContentMapValues.nodeStringValue(index.get("type"), "DEFAULT_TYPE_NAME");
+                    final String indexName = XContentMapValues.nodeStringValue(index.get("name"), "DEFAULT_INDEX_NAME");
+                    final String indexType = XContentMapValues.nodeStringValue(index.get("type"), "DEFAULT_TYPE_NAME");
                     jobData.put(JOB_DATA_KEY_INDEX_NAME, indexName);
                     jobData.put(JOB_DATA_KEY_INDEX_TYPE, indexType);
                     if(columnFamily.containsKey("columns")) {
@@ -147,13 +150,12 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                         // Create Index and set settings and mappings
                         @SuppressWarnings("unchecked")
                         List<Map<String, String>> columns = (List<Map<String, String>>) columnFamily.get("columns");
-                        //IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                         // MAPPING GOES HERE
                         for (Map<String, String> column : columns) {
                             String columnName = column.get("name");
                             LOGGER.info("adding {}", columnName);
                             try {
-                                XContentBuilder mappingBuilder = jsonBuilder()
+                                final XContentBuilder mappingBuilder = jsonBuilder()
                                         .startObject()
                                             .startObject(indexType)
                                                 .startObject("properties")
@@ -183,6 +185,8 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
                                         .endObject();
                                 LOGGER.debug(mappingBuilder.string());
 
+                                putOrCreateIndexes(indexName, mappingBuilder, indexType);
+
                             } catch (IOException e) {
                                 LOGGER.warn("XContentBuilder IO exception {}", e);
                             }
@@ -209,6 +213,24 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
             LOGGER.warn("Scheduler Exception {}", e);
         }
         LOGGER.info("Cassandra River Started");
+    }
+
+    private void putOrCreateIndexes(final String indexName, final XContentBuilder mappingBuilder, final String indexType) {
+        new Thread(new Runnable() {
+            public void run() {
+                IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
+                if (res.isExists()) {
+                    PutMappingRequestBuilder putMappingRequestBuilder = client.admin().indices().preparePutMapping(indexName);
+                    putMappingRequestBuilder.setType(indexType).setSource(mappingBuilder);
+                    putMappingRequestBuilder.execute().actionGet();
+                } else {
+                    CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName);
+                    createIndexRequestBuilder.addMapping(indexType, mappingBuilder);
+                    createIndexRequestBuilder.execute().actionGet();
+                    res = client.admin().indices().prepareExists(indexName).execute().actionGet();
+                }
+            }
+        }).start();
     }
 
     public void close() {
