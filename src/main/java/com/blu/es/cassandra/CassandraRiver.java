@@ -220,10 +220,12 @@ public class CassandraRiver extends AbstractRiverComponent implements River {
             public void run() {
                 IndicesExistsResponse res = client.admin().indices().prepareExists(indexName).execute().actionGet();
                 if (res.isExists()) {
+                    LOGGER.info("Putting mapping for indexName: "+indexName+", indexType: "+indexType);
                     PutMappingRequestBuilder putMappingRequestBuilder = client.admin().indices().preparePutMapping(indexName);
                     putMappingRequestBuilder.setType(indexType).setSource(mappingBuilder);
                     putMappingRequestBuilder.execute().actionGet();
                 } else {
+                    LOGGER.info("Creating mapping for indexName: "+indexName+", indexType: "+indexType);
                     CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName);
                     createIndexRequestBuilder.addMapping(indexType, mappingBuilder);
                     createIndexRequestBuilder.execute().actionGet();
